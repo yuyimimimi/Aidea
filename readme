@@ -73,6 +73,8 @@
 
 
 数学表述(这部分是让ai辅助生成的,可能不准确):
+
+
 ### 1.1 架构元素定义
 设软件架构由三元组 $\mathcal{A} = (\mathcal{M}, \preceq, \mathcal{D})$ 构成，其中：
 
@@ -83,7 +85,7 @@
    - 反对称性：$a \preceq b \land b \preceq a \Rightarrow a = b$
    - 传递性：$a \preceq b \land b \preceq c \Rightarrow a \preceq c$
    
-   记 $a \prec b$ 当且仅当 $a \preceq b \land a \neq b$，此时称 $b$ 比 $a$ **更抽象**。
+   记 $a \prec b$ 当且仅当 $a \preceq b \land a \neq b$
 
 3. **依赖关系** $\mathcal{D} = \mathcal{D}_s \cup \mathcal{D}_w$：
    - $\mathcal{D}_s \subseteq \mathcal{M} \times \mathcal{M}$：**强依赖**，记 $a \xrightarrow{s} b$
