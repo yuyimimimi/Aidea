@@ -72,131 +72,63 @@
 一个对象在不同上下文中会有不同身份
 
 
-数学表述(这部分是让ai辅助生成的,可能不准确):
 
 
-### 1.1 架构元素定义
-设软件架构由三元组 $\mathcal{A} = (\mathcal{M}, \preceq, \mathcal{D})$ 构成，其中：
+二、 架构规约的数学形式化表述(这部分是让ai辅助生成的,可能不准确):
+1. 基础定义
 
-1. **模块集合** $\mathcal{M} = \{m_1, m_2, \ldots, m_n\}$：表示架构中的基本设计单元。
+设软件架构为一个有向属性图 G=(M,E)，其中：
 
-2. **抽象层次偏序** $\preceq \subseteq \mathcal{M} \times \mathcal{M}$：满足：
-   - 自反性：$\forall m \in \mathcal{M}, m \preceq m$
-   - 反对称性：$a \preceq b \land b \preceq a \Rightarrow a = b$
-   - 传递性：$a \preceq b \land b \preceq c \Rightarrow a \preceq c$
-   
-   记 $a \prec b$ 当且仅当 $a \preceq b \land a \neq b$
+    模块集合 M：每个节点 m∈M 代表一个对象（结构体 + 函数集）。
 
-3. **依赖关系** $\mathcal{D} = \mathcal{D}_s \cup \mathcal{D}_w$：
-   - $\mathcal{D}_s \subseteq \mathcal{M} \times \mathcal{M}$：**强依赖**，记 $a \xrightarrow{s} b$
-   - $\mathcal{D}_w \subseteq \mathcal{M} \times \mathcal{M}$：**弱依赖**，记 $a \xrightarrow{w} b$
+    依赖边集 E⊆M×M×{s,w}：
 
-### 1.2 依赖关系语义
-对于任意 $a, b \in \mathcal{M}$：
+        强依赖 (Strong)：记作 as​b，表示 b 是 a 的父节点 (Parent)。其物理意义为 a 嵌入了 b 或直接调用了 b 的函数。
 
-1. **强依赖** $a \xrightarrow{s} b$ 表示在架构设计中满足以下条件之一：
-   - $a$ 的实现直接受 $b$ 的实现影响
-   - $a$ 的内存布局包含 $b$ 的实例
-   - $a$ 直接调用 $b$ 的操作函数
+        弱依赖 (Weak)：记作 aw​b，表示 b 是 a 的祖先引用 (Ancestor Reference)。其物理意义为 a 仅持有 b 的句柄且不直接操作。
 
-2. **弱依赖** $a \xrightarrow{w} b$ 表示在架构设计中满足：
-   - $a$ 仅持有 $b$ 的引用（指针、句柄等）
-   - $a$ 不直接操作 $b$ 的实例或函数
+2. 核心规约
+2.1 规约一：强依赖的层级性 (层级偏序)
 
-## 二、架构设计规约
+强依赖关系必须构成一个有向无环图 (DAG)。定义强依赖的传递闭包为 s+​：
+∄a∈M 使得 as+​a
 
-在设计阶段，架构师必须确保以下规约成立：
+    架构意义：禁止任何形式的循环强耦合。
 
-### 2.1 规约一：依赖方向约束
-**设计原则**：依赖方向必须与抽象层次一致。
-$$
-\forall a, b \in \mathcal{M}:
-\begin{cases}
-a \xrightarrow{s} b \Rightarrow a \prec b & \text{(强依赖必须指向更抽象的模块)} \\
-a \xrightarrow{w} b \Rightarrow b \prec a & \text{(弱依赖必须指向更具体的模块)}
-\end{cases}
-$$
+2.2 规约二：弱依赖的身份约束 (地位对等)
 
-### 2.2 规约二：依赖子图构造
-对于任意模块 $x \in \mathcal{M}$，定义其**上下文依赖子图** $G_x = (V_x, E_x)$：
+对于任何弱依赖关系 aw​b，b 在全局拓扑中必须是 a 的抽象祖先。即：
+∀aw​b, 必存在路径 as+​b
 
-- **节点集**：$V_x = \{x\} \cup A_w(x) \cup D_s(x)$
-  其中：
-  - $A_w(x) = \{y \in \mathcal{M} \mid y \xrightarrow{w^*} x\}$（弱依赖传递祖先）
-  - $D_s(x) = \{z \in \mathcal{M} \mid x \xrightarrow{s^*} z\}$（强依赖传递后代）
-  
-- **边集**：$E_x = \mathcal{D} \cap (V_x \times V_x)$
+    架构意义：你只能弱依赖你的“长辈”（已经在更高层级定义的模块）。禁止弱依赖你的子孙或平级模块，防止越权访问。
 
-### 2.3 规约三：强依赖父子关系
-**设计原则**：强依赖建立全局唯一的父子关系。
+2.3 规约三：上下文子图构造 (Gx​)
 
-对于任意 $a, b \in \mathcal{M}$，若在任意子图 $G_c$ 中存在 $a \xrightarrow{s} b$，则定义：
-- $b$ 是 $a$ 的**父模块**，记作 $\text{parent}(a) = b$
-- $a$ 是 $b$ 的**子模块**，记作 $a \in \text{children}(b)$
+对于任意核心模块 x∈M，其上下文依赖子图 Gx​=(Vx​,Ex​) 定义如下：
 
-该关系满足：
-1. **唯一性**：$\forall a \in \mathcal{M}$，若 $\text{parent}(a)$ 存在，则唯一
-2. **传递性**：$\text{parent}(a) = b \land \text{parent}(b) = c \Rightarrow a \xrightarrow{s^+} c$
+    子孙集 (Descendants)：D(x)={z∣xs+​z}
 
-### 2.4 规约四：上下文可达性约束
-**设计原则**：在任一模块的上下文中，抽象层必须能够到达具体层。
+    祖先集 (Ancestors)：A(x)={y∣xw​y}
 
-对于任意 $x \in \mathcal{M}$ 及其依赖子图 $G_x$：
-$$
-\forall a \in A_w(x), \forall d \in D_s(x): \exists \text{ 路径 } a \rightsquigarrow d \text{ 在 } G_x \text{ 中}
-$$
+    节点集：Vx​={x}∪D(x)∪A(x)
 
-其中路径可由任意依赖边（强或弱）组成。
+    边集：Ex​ 为 Vx​ 在原图 G 中的所有诱导边。
 
-### 2.5 规约五：上下文连通性约束
-**设计原则**：每个模块的上下文必须是完整的。
+2.4 规约四：上下文连通性与孤岛消除
 
-对于任意 $x \in \mathcal{M}$，其依赖子图 $G_x$ 必须是**弱连通的**（即忽略边方向后的无向图连通）。
+在子图 Gx​ 中，必须满足：
 
-### 2.6 规约六：依赖方向一致性
-**设计原则**：两个模块间的依赖方向在所有上下文中必须一致。
+    无孤岛：Gx​ 的弱连通分量数量为 1。
 
-对于任意 $a, b \in \mathcal{M}$，若存在两个不同的模块 $x, y \in \mathcal{M}$，使得 $a, b \in V_x \cap V_y$，则：
-$$
-(a, b) \in E_x \Leftrightarrow (a, b) \in E_y
-$$
-且
-$$
-(b, a) \in E_x \Leftrightarrow (b, a) \in E_y
-$$
+    可达性闭环：对于 x 的任意弱依赖祖先 y∈A(x)，必须存在至少一条路径能够到达 x 的任意强依赖子孙 z∈D(x)。
+    ∀y∈A(x),∀z∈D(x):∃ Path(y⇝z)∈Gx​
 
-即：依赖方向在所有包含 $a, b$ 的子图中必须一致。
+    架构意义：确保高层抽象（祖先）下达的指令或持有的上下文，能够贯穿中心节点，最终落实到具体的执行单元（子孙）上。
 
-### 2.7 规约七：强依赖无环性
-**设计原则**：具体实现不能依赖更具体的实现。
+2.5 规约五：依赖一致性 (身份稳定性)
 
-强依赖关系必须构成有向无环图：
-$$
-\nexists a_1, a_2, \ldots, a_k \in \mathcal{M}: a_1 \xrightarrow{s} a_2 \xrightarrow{s} \cdots \xrightarrow{s} a_k \xrightarrow{s} a_1
-$$
-
-## 三、设计方法论
-
-### 3.1 架构设计流程
-1. **定义抽象层次**：确定 $\mathcal{M}$ 和 $\preceq$
-2. **设计模块接口**：明确每个模块的对外契约
-3. **建立依赖关系**：
-   - 若模块 $a$ 需要 $b$ 的实现细节 → 建立 $a \xrightarrow{s} b$
-   - 若模块 $a$ 仅需 $b$ 的接口引用 → 建立 $a \xrightarrow{w} b$
-4. **验证规约**：检查上述七条规约是否满足
-5. **迭代调整**：对违规依赖进行重构
-
-### 3.2 设计决策指导
-
-#### 何时使用强依赖？
-- 模块组合（Composition）：子模块是父模块的组成部分
-- 实现继承：子模块实现父模块的接口
-- 模板/泛型实例化
-
-#### 何时使用弱依赖？
-- 接口依赖：仅通过抽象接口引用其他模块
-- 回调机制：注册回调函数
-- 观察者模式：订阅通知
+对于任意两个模块 a,b，其在所有包含它们的子图 Gxi​​ 中的依赖性质（强、弱、无）必须保持一致。
+∀x,y∈M, 若 a,b∈Vx​∩Vy​, 则 Edge(a,b) 在 Gx​ 与 Gy​ 中属性相同。
 
 
 
